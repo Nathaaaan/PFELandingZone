@@ -1,0 +1,138 @@
+version: '3.2'
+
+services:
+  flutter:
+    build:
+      context: flutter_form/
+    ports:
+      - "8080:8080"
+
+  flask:
+    build:
+      context: flask_docker/
+    ports:
+      - "5000:5000"
+
+  elasticsearch:
+    build:
+      context: elasticsearch/
+      args:
+        ELK_VERSION: $ELK_VERSION
+    volumes:
+      - type: bind
+        source: ./elasticsearch/config/elasticsearch.yml
+        target: /usr/share/elasticsearch/config/elasticsearch.yml
+        read_only: true
+      - type: volume
+        source: elasticsearch
+        target: /usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      ES_JAVA_OPTS: "-Xmx256m -Xms256m"
+      ELASTIC_PASSWORD: changeme
+    networks:
+      - elk
+
+  logstash:
+      build:
+        context: logstash/
+        args:
+          ELK_VERSION: $ELK_VERSION
+      volumes:
+        - type: bind
+          source: ./logstash/config/logstash.yml
+          target: /usr/share/logstash/config/logstash.yml
+          read_only: true
+        - type: bind
+          source: ./logstash/pipeline
+          target: /usr/share/logstash/pipeline
+          read_only: true
+      ports:
+        - "5006:5000"
+        - "9600:9600"
+      environment:
+        LS_JAVA_OPTS: "-Xmx256m -Xms256m"
+      networks:
+        - elk
+      depends_on:
+        - elasticsearch
+
+  logstash2:
+      build:
+        context: logstash2/
+        args:
+          ELK_VERSION: $ELK_VERSION
+      volumes:
+        - type: bind
+          source: ./temp
+          target: /usr/tmp
+        - type: bind
+          source: ./logstash2/config/logstash.yml
+          target: /usr/share/logstash/config/logstash.yml
+          read_only: true
+        - type: bind
+          source: ./logstash2/pipeline
+          target: /usr/share/logstash/pipeline
+          read_only: true
+      ports:
+        - "5001:5000"
+        - "9601:9600"
+      environment:
+        LS_JAVA_OPTS: "-Xmx256m -Xms256m"
+      networks:
+        - elk
+      depends_on:
+        - elasticsearch
+
+  logstash3:
+      build:
+        context: logstash3/
+        args:
+          ELK_VERSION: $ELK_VERSION
+      volumes:
+        - type: bind
+          source: ./temp
+          target: /usr/tmp
+        - type: bind
+          source: ./logstash3/config/logstash.yml
+          target: /usr/share/logstash/config/logstash.yml
+          read_only: true
+        - type: bind
+          source: ./logstash3/pipeline
+          target: /usr/share/logstash/pipeline
+          read_only: true
+      ports:
+        - "5002:5000"
+        - "9602:9600"
+      environment:
+        LS_JAVA_OPTS: "-Xmx256m -Xms256m"
+      networks:
+        - elk
+      depends_on:
+        - elasticsearch
+
+  kibana:
+      build:
+        context: kibana/
+        args:
+          ELK_VERSION: $ELK_VERSION
+      volumes:
+        - type: bind
+          source: ./kibana/config/kibana.yml
+          target: /usr/share/kibana/config/kibana.yml
+          read_only: true
+      ports:
+        - "5601:5601"
+      networks:
+        - elk
+      depends_on:
+        - elasticsearch
+
+networks:
+  elk:
+    driver: bridge
+
+volumes:
+  elasticsearch:
